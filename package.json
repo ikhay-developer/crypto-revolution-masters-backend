@@ -1,0 +1,29 @@
+{
+  "name": "crypto-revolution-masters",
+  "version": "1.0.0",
+  "description": "crypto revolution masters app backend",
+  "main": "lib/index.js",
+  "repository": "https://git.heroku.com/crypto-revolution-masters.git",
+  "author": "daniel-rif <danielonyenwee@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "watch": "tsc --watch",
+    "start": "nodemon lib/index"
+  },
+  "dependencies": {
+    "axios": "^0.25.0",
+    "body-parser": "^1.19.1",
+    "cors": "^2.8.5",
+    "express": "^4.17.2",
+    "express-fileupload": "^1.2.1",
+    "firebase": "^9.6.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.12",
+    "@types/express": "^4.17.13",
+    "@types/express-fileupload": "^1.2.2",
+    "@types/node": "^17.0.13",
+    "nodemon": "^2.0.15"
+  }
+}
