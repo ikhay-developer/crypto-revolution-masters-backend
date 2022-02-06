@@ -9,7 +9,8 @@
   "private": true,
   "scripts": {
     "watch": "tsc --watch",
-    "start": "nodemon lib/index"
+    "start": "nodemon lib/index",
+    "deploy": "git push heroku main"
   },
   "dependencies": {
     "axios": "^0.25.0",
