@@ -48,39 +48,50 @@ userApi.post("/:id/reset_code", async (req, res) => {
     let { resetCode } = req.body as  { resetCode: string }
     let state = "failed"
     let snapshot = await getDoc(doc(table.user, id))
-    let userData = snapshot.data() as any
-    if (userData["recovery code"] == resetCode) {
-        userData["recovery code"] = "00000"
-        setDoc(doc(table.user, id), userData)
-        .then(_ => {
-            res.json({ state: "success" })
-        })
-        .catch(_ => {
-            res.json({ state, reason: "backend error" })
-        })
+    if (snapshot.exists()) {
+        let userData = snapshot.data() as any
+        if (userData["recovery code"] == resetCode) {
+            userData["recovery code"] = "00000"
+            setDoc(doc(table.user, id), userData)
+            .then(_ => {
+                res.json({ state: "success" })
+            })
+            .catch(_ => {
+                res.json({ state, reason: "backend error" })
+            })
+        } else {
+            res.json({ state, reason: "incorrect reset code" })
+        }
     } else {
-        res.json({ state, reason: "incorrect reset code" })
+        res.json({ state, reason: "user doesn't exist" })
     }
+
+    
 })
 
 userApi.get("/:id/profile", async (req, res) => {
     let id = req.params.id
     let url = `${req.protocol}://${req.headers.host}`
     try {
-        let profile = ((await getDoc(doc(table.user, id))).data() as any)["profile"] as Array<UserProfileData>
-        let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
-        if (coins.data.state == "success") {
-           let data = coins.data.data as Array<any>
-           let coinsInProfile:Array<string> = profile.map(({ name }) => name.toLowerCase())
-           data = data.filter(({ name }) =>  coinsInProfile.includes(name.toLowerCase()))
-           data.forEach((value, index) => {
-               let { amount, transactions } = profile.filter(({name}) => name.toLowerCase() == value.name.toLowerCase()).at(0) as UserProfileData
-               data[index] = {...value, amount, transactions }
-           })
-           data = data.filter(value => value.amount > 0)
-           res.json({ state: "success", data })
+        let snapshot = await getDoc(doc(table.user, id))
+        if (snapshot.exists()) {
+            let profile = (snapshot.data() as any)["profile"] as Array<UserProfileData>
+            let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
+            if (coins.data.state == "success") {
+                let data = coins.data.data as Array<any>
+                let coinsInProfile:Array<string> = profile.map(({ name }) => name.toLowerCase())
+                data = data.filter(({ name }) =>  coinsInProfile.includes(name.toLowerCase()))
+                data.forEach((value, index) => {
+                    let { amount, transactions } = profile.filter(({name}) => name.toLowerCase() == value.name.toLowerCase()).at(0) as UserProfileData
+                    data[index] = {...value, amount, transactions }
+                })
+                data = data.filter(value => value.amount > 0)
+                res.json({ state: "success", data })
+            } else {
+                throw new Error()
+            }
         } else {
-            throw new Error()
+            res.json({ state: "failed", reason: "user doesn't exist" })
         }
     } catch (error) {
         res.json({ state: "failed", reason: "backend error" })
@@ -91,78 +102,93 @@ userApi.post("/:id/profile/buy", async (req, res) => {
     let id = req.params.id
     let { name, transaction } = req.body as { name:string, transaction: UserProfileTransactionData }
     let docRef = doc(table.user, id)
-    let userData = (await getDoc(docRef)).data() as any
-    let userProfile = userData["profile"] as Array<UserProfileData>
-    userProfile = userProfile.map(value => ({ ...value, name: value.name.toLocaleLowerCase() }))
-    let filteredUserProfile = userProfile.filter(value => value.name == name)
-    if (filteredUserProfile.length <= 0) {
-        userProfile.push({
-            name: name.toLocaleLowerCase(),
-            amount: transaction.amount,
-            transactions: [transaction]
+    let snapshot = await getDoc(doc(table.user, id))
+    if (snapshot.exists()) {
+        let userData = snapshot.data() as any
+        let userProfile = userData["profile"] as Array<UserProfileData>
+        userProfile = userProfile.map(value => ({ ...value, name: value.name.toLocaleLowerCase() }))
+        let filteredUserProfile = userProfile.filter(value => value.name == name)
+        if (filteredUserProfile.length <= 0) {
+            userProfile.push({
+                name: name.toLocaleLowerCase(),
+                amount: transaction.amount,
+                transactions: [transaction]
+            })
+        } else {
+            userProfile.forEach((value, index) => {
+                if (value.name.toLocaleLowerCase() == name.toLocaleLowerCase()) {
+                    userProfile[index] = {
+                        amount: value.amount + transaction.amount,
+                        name: value.name.toLocaleLowerCase(),
+                        transactions: [transaction, ...value.transactions]
+                    }
+                }
+            })
+        }
+        userData["profile"] = userProfile
+        setDoc(docRef, userData)
+        .then(_ => {
+            res.json({ state: "success" })
+        })
+        .catch(_ => {
+            res.json({ state: "failed", reason: "backend error" })
         })
     } else {
-        userProfile.forEach((value, index) => {
-            if (value.name.toLocaleLowerCase() == name.toLocaleLowerCase()) {
-                userProfile[index] = {
-                    amount: value.amount + transaction.amount,
-                    name: value.name.toLocaleLowerCase(),
-                    transactions: [transaction, ...value.transactions]
-                }
-            }
-        })
+        res.json({ state: "failed", reason: "user doesn't exist" })
     }
-    userData["profile"] = userProfile
-    setDoc(docRef, userData)
-    .then(_ => {
-        res.json({ state: "success" })
-    })
-    .catch(_ => {
-        res.json({ state: "failed", reason: "backend error" })
-    })
 })
 
 userApi.post("/:id/profile/sell", async (req, res) => {
     let id = req.params.id
     let { name, transaction } = req.body as { name:string, transaction: UserProfileTransactionData }
     let docRef = doc(table.user, id)
-    let userData = (await getDoc(docRef)).data() as any
-    let userProfile = userData["profile"] as Array<UserProfileData>
-    userProfile = userProfile.map(value => ({ ...value, name: value.name.toLocaleLowerCase() }))
-    let filteredUserProfile = userProfile.filter(value => value.name == name)
-    if (filteredUserProfile.length > 0) {
-        userProfile.forEach((value, index) => {
-            if (value.name.toLocaleLowerCase() == name.toLocaleLowerCase()) {
-                userProfile[index] = {
-                    amount: value.amount - transaction.amount <= 0 ? 0 : value.amount - transaction.amount,
-                    name: value.name.toLocaleLowerCase(),
-                    transactions: [transaction, ...value.transactions]
+    let snapshot = await getDoc(docRef)
+    if (snapshot.exists()) {
+        let userData = snapshot.data() as any
+        let userProfile = userData["profile"] as Array<UserProfileData>
+        userProfile = userProfile.map(value => ({ ...value, name: value.name.toLocaleLowerCase() }))
+        let filteredUserProfile = userProfile.filter(value => value.name == name)
+        if (filteredUserProfile.length > 0) {
+            userProfile.forEach((value, index) => {
+                if (value.name.toLocaleLowerCase() == name.toLocaleLowerCase()) {
+                    userProfile[index] = {
+                        amount: value.amount - transaction.amount <= 0 ? 0 : value.amount - transaction.amount,
+                        name: value.name.toLocaleLowerCase(),
+                        transactions: [transaction, ...value.transactions]
+                    }
                 }
-            }
+            })
+        }
+        userData["profile"] = userProfile
+        setDoc(docRef, userData)
+        .then(_ => {
+            res.json({ state: "success" })
         })
+        .catch(_ => {
+            res.json({ state: "failed", reason: "backend error" })
+        })
+    } else {
+        res.json({ state: "failed", reason: "user doesn't exist" })
     }
-    userData["profile"] = userProfile
-    setDoc(docRef, userData)
-    .then(_ => {
-        res.json({ state: "success" })
-    })
-    .catch(_ => {
-        res.json({ state: "failed", reason: "backend error" })
-    })
 })
 
 userApi.get("/:id/favourite-coins", async (req, res) => {
     let id = req.params.id
     let url = `${req.protocol}://${req.headers.host}`
     try {
-        let favouriteCoins = ((await getDoc(doc(table.user, id))).data() as any)["favourite coins"] as Array<string>
-        let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
-        if (coins.data.state == "success") {
-           let data = coins.data.data as Array<any>
-           data = data.filter(({ name }) => favouriteCoins.includes(name.toLowerCase()))
-           res.json({ state: "success", data })
+        let snapshot = await getDoc(doc(table.user, id))
+        if (snapshot.exists()) {
+            let favouriteCoins = (snapshot.data() as any)["favourite coins"] as Array<string>
+            let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
+            if (coins.data.state == "success") {
+            let data = coins.data.data as Array<any>
+            data = data.filter(({ name }) => favouriteCoins.includes(name.toLowerCase()))
+            res.json({ state: "success", data })
+            } else {
+                throw new Error()
+            }
         } else {
-            throw new Error()
+            res.json({ state: "failed", reason: "user doesn't exist" })
         }
     } catch (error) {
         res.json({ state: "failed", reason: "backend error" })
@@ -174,15 +200,20 @@ userApi.post("/:id/favourite-coins", async (req, res) => {
     let favouriteCoins = req.body as Array<string>
     favouriteCoins = favouriteCoins.map(value => value.toLowerCase())
     let docRef = doc(table.user, id)
-    let userData = (await getDoc(docRef)).data() as any
-    userData["favourite coins"] = favouriteCoins
-    setDoc(docRef, userData)
-    .then(_ => {
-        res.json({ state: "success" })
-    })
-    .catch(_ => {
-        res.json({ state: "failed", reason: "backend error" })
-    })
+    let snapshot = await getDoc(docRef)
+    if (snapshot.exists()) {
+        let userData = snapshot.data() as any
+        userData["favourite coins"] = favouriteCoins
+        setDoc(docRef, userData)
+        .then(_ => {
+            res.json({ state: "success" })
+        })
+        .catch(_ => {
+            res.json({ state: "failed", reason: "backend error" })
+        })
+    } else {
+        res.json({ state: "failed", reason: "user doesn't exist" })
+    } 
 })
 
 userApi.get("/:id/reset_code", (req, res) => {
@@ -229,7 +260,6 @@ userApi.get("/:id/reset_code", (req, res) => {
             }
         }
     )
-    
 })
 
 userApi.put("/:id", async (req, res) => {
