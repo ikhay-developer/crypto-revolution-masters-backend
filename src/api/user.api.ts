@@ -43,31 +43,31 @@ const resetPasswordEmailHtml = (resetCode:string) => {
 
 const userApi:Router = Router()
 
-userApi.post("/:id/reset_code", async (req, res) => {
-    let id = req.params.id
-    let { resetCode } = req.body as  { resetCode: string }
-    let state = "failed"
-    let snapshot = await getDoc(doc(table.user, id))
-    if (snapshot.exists()) {
-        let userData = snapshot.data() as any
-        if (userData["recovery code"] == resetCode) {
-            userData["recovery code"] = "00000"
-            setDoc(doc(table.user, id), userData)
-            .then(_ => {
-                res.json({ state: "success" })
-            })
-            .catch(_ => {
-                res.json({ state, reason: "backend error" })
-            })
-        } else {
-            res.json({ state, reason: "incorrect reset code" })
-        }
-    } else {
-        res.json({ state, reason: "user doesn't exist" })
-    }
+// userApi.post("/:id/reset_code", async (req, res) => {
+//     let id = req.params.id
+//     let { resetCode } = req.body as  { resetCode: string }
+//     let state = "failed"
+//     let snapshot = await getDoc(doc(table.user, id))
+//     if (snapshot.exists()) {
+//         let userData = snapshot.data() as any
+//         if (userData["recovery code"] == resetCode) {
+//             userData["recovery code"] = "00000"
+//             setDoc(doc(table.user, id), userData)
+//             .then(_ => {
+//                 res.json({ state: "success" })
+//             })
+//             .catch(_ => {
+//                 res.json({ state, reason: "backend error" })
+//             })
+//         } else {
+//             res.json({ state, reason: "incorrect reset code" })
+//         }
+//     } else {
+//         res.json({ state, reason: "user doesn't exist" })
+//     }
 
     
-})
+// })
 
 userApi.get("/:id/profile", async (req, res) => {
     let id = req.params.id
