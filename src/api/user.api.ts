@@ -346,6 +346,17 @@ userApi.delete('/:id', async (req, res) => {
     })
 })
 
+userApi.get("/:id", async (req, res) => {
+    let id = req.params.id
+    let snapshot = await getDoc(doc(table.user, id))
+    if (snapshot.exists()) {
+        let { username, email, password } = snapshot.data() as any
+        res.json({ state: "success", data: { username, email, password } })
+    } else {
+        res.json({ state: "failed", reason: "user doesn't exist" })
+    }
+})
+
 userApi.post("/login", async (req, res) => {
     const { password, email_or_username } = req.body as { password:string, email_or_username:string }
     let state = "failed"
