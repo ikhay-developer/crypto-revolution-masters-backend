@@ -5,7 +5,7 @@ const coinsApi:Router = Router()
 
 coinsApi.get("/", async (_, res) => {
     try {
-        const coingeckoApi =  await axios.get("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h")
+        const coingeckoApi =  await axios.get("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=2000&page=1&sparkline=false&price_change_percentage=1h")
         if (coingeckoApi.status >= 200 && coingeckoApi.status <= 300) {
             let data = (coingeckoApi.data as Array<any>)
             .map(({ 
