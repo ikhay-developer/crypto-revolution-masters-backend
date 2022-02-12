@@ -12,21 +12,7 @@ import {
     setDoc, 
     where 
 } from "firebase/firestore"
-import { createTransport } from "nodemailer"
 import { table } from "../services/database"
-
-interface UserProfileTransactionData {
-    amount: number,
-    "current price": number,
-    action: "buy"|"sell"
-    time: string
-}
-
-interface UserProfileData {
-    name: string
-    amount: number,
-    transactions: Array<UserProfileTransactionData>
-}
 
 interface UserDetail {
     password: string,
@@ -43,49 +29,93 @@ const resetPasswordEmailHtml = (resetCode:string) => {
 
 const userApi:Router = Router()
 
-// userApi.post("/:id/reset_code", async (req, res) => {
-//     let id = req.params.id
-//     let { resetCode } = req.body as  { resetCode: string }
-//     let state = "failed"
-//     let snapshot = await getDoc(doc(table.user, id))
-//     if (snapshot.exists()) {
-//         let userData = snapshot.data() as any
-//         if (userData["recovery code"] == resetCode) {
-//             userData["recovery code"] = "00000"
-//             setDoc(doc(table.user, id), userData)
-//             .then(_ => {
-//                 res.json({ state: "success" })
-//             })
-//             .catch(_ => {
-//                 res.json({ state, reason: "backend error" })
-//             })
-//         } else {
-//             res.json({ state, reason: "incorrect reset code" })
-//         }
-//     } else {
-//         res.json({ state, reason: "user doesn't exist" })
-//     }
+userApi.post("/:id/portfolio/sell", async (req, res) => {
+    let id = req.params.id
+    let { name, amount, time } = req.body as { name:string, amount:number, time:string, "current price":number }
+    let snapshot = await getDoc(doc(table.user, id))
+    if (snapshot.exists()) {
+        name = name.toLowerCase() 
+        let userData = snapshot.data() as any
+        userData["transaction"] = [
+            {
+                name: name, 
+                amount,
+                time,
+                action: "sell",
+                "current price": req.body["current price"]
+            }, 
+            ...userData["transaction"]
+        ] 
+        if (name in userData["assets"]) {
+            userData["assets"][name] = (userData["assets"][name] - amount) > 0 ? userData["assets"][name] - amount : 0
+        }
+        setDoc(doc(table.user, id), userData)
+        .then(_ => {
+            res.json({ state: "success" })
+        })
+        .catch(_ => {
+            res.json({ state: "failed", reason: "backend error" })
+        })
+    } else {
+        res.json({ state: "failed", reason: "user doesn't exist" })
+    }
+}) 
 
-    
-// })
+userApi.post("/:id/portfolio/buy", async (req, res) => {
+    let id = req.params.id
+    let { name, amount, time } = req.body as { name:string, amount:number, time:string, "current price":number }
+    let snapshot = await getDoc(doc(table.user, id))
+    if (snapshot.exists()) {
+        name = name.toLowerCase() 
+        let userData = snapshot.data() as any
+        userData["transaction"] = [
+            {
+                name: name, 
+                amount,
+                time,
+                action: "buy",
+                "current price": req.body["current price"]
+            }, 
+            ...userData["transaction"]
+        ] 
+        if (name in userData["assets"]) {
+            userData["assets"][name] = userData["assets"][name] + amount
+        } else {
+            userData["assets"][name] = amount
+        }
+        setDoc(doc(table.user, id), userData)
+        .then(_ => {
+            res.json({ state: "success" })
+        })
+        .catch(_ => {
+            res.json({ state: "failed", reason: "backend error" })
+        })
+    } else {
+        res.json({ state: "failed", reason: "user doesn't exist" })
+    }
+})
 
-userApi.get("/:id/profile", async (req, res) => {
+userApi.get("/:id/portfolio", async (req, res) => {
     let id = req.params.id
     let url = `${req.protocol}://${req.headers.host}`
     try {
         let snapshot = await getDoc(doc(table.user, id))
         if (snapshot.exists()) {
-            let profile = (snapshot.data() as any)["profile"] as Array<UserProfileData>
+            let assets = (snapshot.data() as any)["assets"] as {[name:string]: number}
+            let assetsCoins = Object.keys(assets)
             let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
             if (coins.data.state == "success") {
                 let data = coins.data.data as Array<any>
-                let coinsInProfile:Array<string> = profile.map(({ name }) => name.toLowerCase())
-                data = data.filter(({ name }) =>  coinsInProfile.includes(name.toLowerCase()))
-                data.forEach((value, index) => {
-                    let { amount, transactions } = profile.filter(({name}) => name.toLowerCase() == value.name.toLowerCase()).at(0) as UserProfileData
-                    data[index] = {...value, amount, transactions }
-                })
-                data = data.filter(value => value.amount > 0)
+                data = data
+                    .filter(({ name }) => assetsCoins.includes(name.toLowerCase()))
+                    .map(value => (
+                            {
+                                ...value, 
+                                amount: assets[value.name.toLowerCase()], 
+                                amount_in_current_price: assets[value.name.toLowerCase()] * value.current_price
+                            }
+                        )
+                    )
                 res.json({ state: "success", data })
             } else {
                 throw new Error()
@@ -98,80 +128,6 @@ userApi.get("/:id/profile", async (req, res) => {
     }
 })
 
-userApi.post("/:id/profile/buy", async (req, res) => {
-    let id = req.params.id
-    let { name, transaction } = req.body as { name:string, transaction: UserProfileTransactionData }
-    let docRef = doc(table.user, id)
-    let snapshot = await getDoc(doc(table.user, id))
-    if (snapshot.exists()) {
-        let userData = snapshot.data() as any
-        let userProfile = userData["profile"] as Array<UserProfileData>
-        userProfile = userProfile.map(value => ({ ...value, name: value.name.toLocaleLowerCase() }))
-        let filteredUserProfile = userProfile.filter(value => value.name == name)
-        if (filteredUserProfile.length <= 0) {
-            userProfile.push({
-                name: name.toLocaleLowerCase(),
-                amount: transaction.amount,
-                transactions: [transaction]
-            })
-        } else {
-            userProfile.forEach((value, index) => {
-                if (value.name.toLocaleLowerCase() == name.toLocaleLowerCase()) {
-                    userProfile[index] = {
-                        amount: value.amount + transaction.amount,
-                        name: value.name.toLocaleLowerCase(),
-                        transactions: [transaction, ...value.transactions]
-                    }
-                }
-            })
-        }
-        userData["profile"] = userProfile
-        setDoc(docRef, userData)
-        .then(_ => {
-            res.json({ state: "success" })
-        })
-        .catch(_ => {
-            res.json({ state: "failed", reason: "backend error" })
-        })
-    } else {
-        res.json({ state: "failed", reason: "user doesn't exist" })
-    }
-})
-
-userApi.post("/:id/profile/sell", async (req, res) => {
-    let id = req.params.id
-    let { name, transaction } = req.body as { name:string, transaction: UserProfileTransactionData }
-    let docRef = doc(table.user, id)
-    let snapshot = await getDoc(docRef)
-    if (snapshot.exists()) {
-        let userData = snapshot.data() as any
-        let userProfile = userData["profile"] as Array<UserProfileData>
-        userProfile = userProfile.map(value => ({ ...value, name: value.name.toLocaleLowerCase() }))
-        let filteredUserProfile = userProfile.filter(value => value.name == name)
-        if (filteredUserProfile.length > 0) {
-            userProfile.forEach((value, index) => {
-                if (value.name.toLocaleLowerCase() == name.toLocaleLowerCase()) {
-                    userProfile[index] = {
-                        amount: value.amount - transaction.amount <= 0 ? 0 : value.amount - transaction.amount,
-                        name: value.name.toLocaleLowerCase(),
-                        transactions: [transaction, ...value.transactions]
-                    }
-                }
-            })
-        }
-        userData["profile"] = userProfile
-        setDoc(docRef, userData)
-        .then(_ => {
-            res.json({ state: "success" })
-        })
-        .catch(_ => {
-            res.json({ state: "failed", reason: "backend error" })
-        })
-    } else {
-        res.json({ state: "failed", reason: "user doesn't exist" })
-    }
-})
-
 userApi.get("/:id/favourite-coins", async (req, res) => {
     let id = req.params.id
     let url = `${req.protocol}://${req.headers.host}`
@@ -181,9 +137,9 @@ userApi.get("/:id/favourite-coins", async (req, res) => {
             let favouriteCoins = (snapshot.data() as any)["favourite coins"] as Array<string>
             let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
             if (coins.data.state == "success") {
-            let data = coins.data.data as Array<any>
-            data = data.filter(({ name }) => favouriteCoins.includes(name.toLowerCase()))
-            res.json({ state: "success", data })
+                let data = coins.data.data as Array<any>
+                data = data.filter(({ name }) => favouriteCoins.includes(name.toLowerCase()))
+                res.json({ state: "success", data })
             } else {
                 throw new Error()
             }
@@ -214,52 +170,6 @@ userApi.post("/:id/favourite-coins", async (req, res) => {
     } else {
         res.json({ state: "failed", reason: "user doesn't exist" })
     } 
-})
-
-userApi.get("/:id/reset_code", (req, res) => {
-    let id = req.params.id
-    let { email } = req.body as { email: string }
-    let password_reset_code:string = Math.floor((19999 + (Math.random() * (99999 - 19999)))).toString()
-    let state = "failed"
-    let mailTransporter = createTransport({
-        host: process.env.SENDER_HOST,
-        secure: false,
-        tls: {
-            ciphers:'SSLv3'
-        },
-        auth: {
-            user: process.env.SENDER_AUTH_USER,
-            pass: process.env.SENDER_AUTH_PASSWORD
-        }
-    })
-    mailTransporter.sendMail(
-        {
-            from: "crypto-revolution-masters@outlook.com",
-            to: email,
-            subject: "Reset password on Crypto Revolution Masters app",
-            html: resetPasswordEmailHtml(password_reset_code)
-        },
-        async (err) => {
-            if (err) {
-                console.log(err.message)
-                res.json({ state, reason: "backend error" })
-            } else {
-                let snapshot = await getDoc(doc(table.user, id))
-                let userData = snapshot.data() as any
-                userData["recovery code"] = password_reset_code
-                setDoc(doc(table.user, id), userData)
-                .then(_ => {
-                    state = "success"
-                    res.json({ state })
-                    userData["recovery code"] = "00000"
-                    setTimeout(_ => setDoc(doc(table.user, id), userData), 3600000)
-                })
-                .catch(_ => {
-                    res.json({ state, reason: "backend error" })
-                })
-            }
-        }
-    )
 })
 
 userApi.put("/:id", async (req, res) => {
@@ -310,11 +220,11 @@ userApi.put("/:id", async (req, res) => {
             reason = "username and email already in use"
         let shouldEditUserDetail:boolean = shouldEditEmail && shouldEditUserName
         password = password == undefined ? docSnap.data().password : password
-        let recovery_code = docSnap.data()["recovery code"]
         let favourite_coins = docSnap.data()["favourite coins"]
-        let profile = docSnap.data()["profile"]
+        let transaction = docSnap.data()["transaction"]
+        let assets = docSnap.data()["assets"]
         if (shouldEditUserDetail) {
-            setDoc(docRef, { username, password, email, profile, "recovery code": recovery_code, "favourite coins": favourite_coins })
+            setDoc(docRef, { username, password, email, transaction, assets, "favourite coins": favourite_coins })
             .then(() => {
                 state = "success"
                 res.json({data: { id, email, password, username }, state})
@@ -399,7 +309,7 @@ userApi.post("/signin", async (req, res) => {
     if (snapshotQueryEmail.empty && snapshotQueryUsername.empty) {
         let size:number = (await getDocs(table.user)).size
         let id:string = (size + 1).toString()
-        setDoc(doc(table.user, id), {email, password, username, "profile": [], "favourite coins": [], "recovery code": "00000"})
+        setDoc(doc(table.user, id), { email, password, username, transaction: [], assets:{}, "favourite coins": []})
         .then(() => {
             state = "success"
             res.json({data: { id, email, password, username }, state})
