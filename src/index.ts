@@ -5,6 +5,7 @@ import cors from "cors"
 import bodyParser from "body-parser"
 import userApi from "./api/user.api"
 import coinsApi from "./api/coins.api"
+import authApi from "./api/auth.api"
 
 const app = express()
 
@@ -17,6 +18,8 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true}))
 
 app.use(fileUpload())
+
+app.use('/auth', authApi)
 
 app.use(`/${process.env.API_SECRET_KEY}/user`, userApi)
 
