@@ -151,6 +151,28 @@ userApi.get("/:id/favourite-coins", async (req, res) => {
     }
 })
 
+userApi.delete("/:id/favourite-coins", async (req, res) => {
+    let id = req.params.id
+    let favouriteCoins = req.body as Array<string>
+    favouriteCoins = favouriteCoins.map(value => value.toLowerCase())
+    let docRef = doc(table.user, id)
+    let snapshot = await getDoc(docRef)
+    if (snapshot.exists()) {
+        let userData = snapshot.data() as any
+        userData["favourite coins"] = (userData["favourite coins"] as Array<string>)
+            .filter(coin => !favouriteCoins.includes(coin.toLowerCase()))
+        setDoc(docRef, userData)
+        .then(_ => {
+            res.json({ state: "success" })
+        })
+        .catch(_ => {
+            res.json({ state: "failed", reason: "backend error" })
+        })
+    } else {
+        res.json({ state: "failed", reason: "user doesn't exist" })
+    }
+})
+
 userApi.post("/:id/favourite-coins", async (req, res) => {
     let id = req.params.id
     let favouriteCoins = req.body as Array<string>
@@ -159,7 +181,8 @@ userApi.post("/:id/favourite-coins", async (req, res) => {
     let snapshot = await getDoc(docRef)
     if (snapshot.exists()) {
         let userData = snapshot.data() as any
-        userData["favourite coins"] = favouriteCoins
+        favouriteCoins = [...favouriteCoins, ...userData["favourite coins"]]
+        userData["favourite coins"] = favouriteCoins.filter((coin, index) => favouriteCoins.indexOf(coin) == index)
         setDoc(docRef, userData)
         .then(_ => {
             res.json({ state: "success" })
