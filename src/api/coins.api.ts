@@ -21,6 +21,9 @@ const fetchCoinsFromCoingecko = async (pageList:Array<string>): Promise<Array<an
                     market_cap_change_24h,
                     market_cap_change_percentage_24h,
                     ath_change_percentage,
+                    price_change_percentage_1h_in_currency,
+                    price_change_percentage_24h,
+                    price_change_24h,
                     high_24h, 
                     low_24h  
                 }) => ({
@@ -35,7 +38,10 @@ const fetchCoinsFromCoingecko = async (pageList:Array<string>): Promise<Array<an
                     market_cap_change_percentage_24h,
                     ath_change_percentage, 
                     high_24h, 
-                    low_24h
+                    low_24h,
+                    price_change_24h,
+                    price_change_percentage_24h,
+                    price_change_percentage_1h_in_currency
                 }))
                 returnData.push(...data)
             } else {
@@ -50,7 +56,7 @@ const fetchCoinsFromCoingecko = async (pageList:Array<string>): Promise<Array<an
 
 coinsApi.get("/", async (_, res) => {
     fetchCoinsFromCoingecko(["1", "2", "3", "4"])
-    .then(data => res.send({ state: "success", data, size: data.length }))
+    .then(data => res.send({ state: "success", data }))
     .catch(_ => res.json({ state: "failed", reason: "backend error" }))
 })
 
