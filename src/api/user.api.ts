@@ -29,6 +29,35 @@ const resetPasswordEmailHtml = (resetCode:string) => {
 
 const userApi:Router = Router()
 
+userApi.get("/:id/coins", async (req, res) => {
+    let id = req.params.id
+    let url = `${req.protocol}://${req.headers.host}`
+    try {
+        let snapshot = await getDoc(doc(table.user, id))
+        if (snapshot.exists()) {
+            let favouriteCoins = (snapshot.data() as any)["favourite coins"] as Array<string>
+            let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
+            if (coins.data.state == "success") {
+                let data = coins.data.data as Array<any>
+                data = data.map(value => {
+                    if (favouriteCoins.includes(value.name.toLowerCase())) {
+                        return ({...value, "add_to_watch_list": true})
+                    } else {
+                        return ({...value, "add_to_watch_list": false})
+                    }
+                })
+                res.json({ state: "success", data })
+            } else {
+                throw new Error()
+            }
+        } else {
+            res.json({ state: "failed", reason: "user doesn't exist" })
+        }
+    } catch (error) {
+        res.json({ state: "failed", reason: "backend error" })
+    }
+})
+
 userApi.post("/:id/portfolio/sell", async (req, res) => {
     let id = req.params.id
     let { name, amount, time } = req.body as { name:string, amount:number, time:string, "current price":number }
