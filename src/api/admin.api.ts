@@ -10,6 +10,30 @@ import { table } from "../services/database"
 
 const adminApi = Router()
 
+adminApi.post("/ads/:id", async (req, res) => {
+    const snapshot = await getDoc(doc(table.admin, "ads"))
+    const body = req.body
+    if (snapshot.exists()) {
+        let data = Object(snapshot.data())
+        data[req.params.id] = {...body}
+        setDoc(doc(table.admin, "ads"), data)
+        .then(_ => res.json({ state: "success", data: {...body} }))
+        .catch(_ => res.json({ state: "failed", reason: "backend error" }))
+    } else {
+        res.json({ state: "failed", reason: "backend error" })
+    }
+})
+
+adminApi.get("/ads", async (_, res) => {
+    const snapshot = await getDoc(doc(table.admin, "ads"))
+    if (snapshot.exists()) {
+        let data = Object(snapshot.data())
+        res.json({ state: "success", data })
+    } else {
+        res.json({ state: "failed", reason: "backend error" })
+    }
+})
+
 adminApi.get("/auth", async (_, res) => {
     const snapshot = await getDoc(doc(table.admin, "auth"))
     if (snapshot.exists()) {
