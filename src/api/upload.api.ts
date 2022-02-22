@@ -16,7 +16,7 @@ uploadApi.post("/:where/", uploadMiddleware.any(), (req, res) => {
             req.params.where,
             files.at(0)["buffer"]
         ).then(imageUrl => {
-            res.json({state: "failed", data: { imageUrl }})
+            res.json({state: "success", data: { imageUrl }})
         }).catch(_ => {
             res.json({state: "failed", reason: "backend error"})
         })
