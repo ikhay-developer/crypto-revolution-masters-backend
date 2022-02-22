@@ -45,25 +45,6 @@ adminApi.get("/auth", async (_, res) => {
 })
 
 adminApi.post("/auth", async (req, res) => {
-    const snapshot = await getDoc(doc(table.admin, "auth"))
-    const { password, username } = req.body as {password: string, username:string }
-    if (snapshot.exists()) {
-        let data = Object(snapshot.data())
-        if (data["password"] == password && data["username"] == username) {
-            res.json({ state: "success" })
-        } else if (data["username"] != username && data["password"] != password) {
-            res.json({ state: "failed", reason: "incorrect username and password" })
-        } else if (data["password"] != password) {
-            res.json({ state: "failed", reason: "incorrect password" })
-        } else if (data["username"] != username) {
-            res.json({ state: "failed", reason: "incorrect username" })
-        }
-    } else {
-        res.json({ state: "failed", reason: "backend error" })
-    }
-})
-
-adminApi.put("/auth", async (req, res) => {
     let { username, password } = req.body as { username:string, password:string }
     setDoc(doc(table.admin, "auth"), { username, password })
     .then(_ => res.json({ state: "success", data: { username, password } }))
