@@ -8,13 +8,10 @@ import firebaseApp from "."
 
 const storage = getStorage(firebaseApp)
 
-export async function uploadFile (fileName:string, data:Blob|Uint8Array|ArrayBuffer) {
-    let fileRef = await uploadBytes(ref(storage, `/ads-images/${fileName}`), data)
+export async function uploadFile (fromUrl:string, fileName:string,  destination:string, data:Blob|Uint8Array|ArrayBuffer): Promise<string> {
+    let fileRef = await uploadBytes(ref(storage, `/${destination}/${fileName}`), data)
     const { name } = fileRef.metadata
-    return {
-        name, 
-        url: `/ads-images/${fileName}`
-    }
+    return `${fromUrl}/${destination}/${fileName}`
 }
 
 export default storage
