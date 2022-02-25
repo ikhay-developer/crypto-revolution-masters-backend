@@ -1,15 +1,14 @@
 import { Router } from "express"
-import { getStream, ref, deleteObject, listAll } from "firebase/storage"
+import { getStream, ref, deleteObject, getDownloadURL } from "firebase/storage"
 import storage from "../services/storage"
 
 const storageApi:Router = Router()
 
-storageApi.get("/:directory/:file", async (req, res) => {
+storageApi.get("/:directory/:file", (req, res) => {
     let imgRef = ref(storage, `${req.params.directory}/${req.params.file}`)
-    let isExist = (await listAll(imgRef)).items.length > 0 ? true : false
-    if (isExist && imgRef != undefined)
+    try {
         getStream(imgRef).pipe(res)
-    else {
+    } catch (error) {
         res.statusCode = 400
         let errorPage = String('<!DOCTYPE html>')
             .concat('<html lang="en">')
