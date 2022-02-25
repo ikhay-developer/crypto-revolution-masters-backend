@@ -1,3 +1,4 @@
+import axios from "axios"
 import { Router } from "express"
 import { 
     doc, 
@@ -55,12 +56,26 @@ adminApi.delete("/ads/:id", async (req, res) => {
     const snapshot = await getDoc(doc(table.admin, "ads"))
     if (snapshot.exists()) {
         let data = Object(snapshot.data())
-        delete data[req.params.id]
-        setDoc(doc(table.admin, "ads"), data)
-        .then(_ => res.json({ state: "success" }))
-        .catch(_ => res.json({ state: "failed", reason: "backend error" }))
-    } else {
-        res.json({ state: "failed", reason: "backend error" })
+        if (req.params.id in data) {
+            let adData = data[req.params.id]
+            let adImageUrl = (adData["image"] as string)
+            axios.delete(adImageUrl)
+            .then(e => {
+                if (e.data.state == "success") {
+                    delete data[req.params.id]
+                    setDoc(doc(table.admin, "ads"), data)
+                    .then(_ => res.json({ state: "success" }))
+                    .catch(_ => res.json({ state: "failed", reason: "backend error" }))
+                } else {
+                    res.json({ state: "failed", reason: "backend error" })
+                }
+            })
+            .catch(e => {
+                res.json({ state: "failed", reason: "backend error" })
+            })
+        } else {
+            res.json({ state: "success" })
+        }
     }
 })
 
