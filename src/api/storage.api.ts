@@ -1,16 +1,28 @@
 import { Router } from "express"
-import { getStream, ref, deleteObject } from "firebase/storage"
+import { getStream, ref, deleteObject, listAll } from "firebase/storage"
 import storage from "../services/storage"
 
 const storageApi:Router = Router()
 
-storageApi.get("/:directory/:file", (req, res) => {
+storageApi.get("/:directory/:file", async (req, res) => {
     let imgRef = ref(storage, `${req.params.directory}/${req.params.file}`)
-    if (imgRef != undefined)
+    let isExist = (await listAll(imgRef)).items.length > 0 ? true : false
+    if (isExist && imgRef != undefined)
         getStream(imgRef).pipe(res)
     else {
         res.statusCode = 400
-        res.send(`<pre>Cannot GET ${req.method} /${req.url}</pre>`)
+        res.send(`<!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <title>Error</title>
+          </head>
+          <body>
+            <pre>
+                Cannot GET ${req.method} ${req.url}
+            </pre>
+          </body>
+        </html>`)
     }
 })
 
