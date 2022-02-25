@@ -11,18 +11,15 @@ storageApi.get("/:directory/:file", async (req, res) => {
         getStream(imgRef).pipe(res)
     else {
         res.statusCode = 400
-        res.send(`<!DOCTYPE html>
-        <html lang="en">
-          <head>
-            <meta charset="utf-8">
-            <title>Error</title>
-          </head>
-          <body>
-            <pre>
-                Cannot GET ${req.method} ${req.url}
-            </pre>
-          </body>
-        </html>`)
+        let errorPage = String('<!DOCTYPE html>')
+            .concat('<html lang="en">')
+            .concat('<head>')
+            .concat('<meta charset="utf-8">\n<title>Error</title>')
+            .concat('</head>')
+            .concat('<body>')
+            .concat(`<pre>\nCannot GET ${req.method} ${req.url}\n</pre>`)
+            .concat('</body>')
+        res.send(errorPage)
     }
 })
 
