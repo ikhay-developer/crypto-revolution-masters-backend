@@ -16,6 +16,7 @@ adminApi.get("/message", async (_, res) => {
     if (snapshot.exists()) {
         let data = Object(snapshot.data())
         let dataArray = Array.from(Object.values(data))
+        dataArray.reverse()
         res.json({ state: "success", data: dataArray })
     } else {
         res.json({ state: "failed", reason: "backend error" })
@@ -82,7 +83,12 @@ adminApi.delete("/ads/:id", async (req, res) => {
 adminApi.get("/ads", async (_, res) => {
     const snapshot = await getDoc(doc(table.admin, "ads"))
     if (snapshot.exists()) {
-        let data = Object(snapshot.data())
+        let dataObj = Object(snapshot.data())
+        let data:{index: string, image: string, link:string, message:string}[] = []
+        Object.keys(dataObj).forEach(i => {
+            data.push({index: i, ...dataObj[i]})
+        }) 
+        data.reverse()
         res.json({ state: "success", data })
     } else {
         res.json({ state: "failed", reason: "backend error" })
