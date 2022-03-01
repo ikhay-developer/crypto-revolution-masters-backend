@@ -1,4 +1,5 @@
 import axios from "axios"
+import "dotenv/config"
 import { Router } from "express"
 import { 
     doc, 
@@ -10,6 +11,32 @@ import {
 import { table } from "../services/database"
 
 const adminApi = Router()
+
+adminApi.post("/favourite-coin", async (req, res) => {
+    const data = req.body
+    setDoc(doc(table.admin, "favourite-coin"), {coins: data})
+    .then(_ => res.json({ state: "success" }))
+    .catch(_ => res.json({ state: "failed", reason: "backend error" }))
+})
+
+adminApi.get("/favourite-coin", async (req, res) => {
+    let url = `${req.protocol}://${req.headers.host}`
+    try {
+        let snapshot = await getDoc(doc(table.admin, "favourite-coin"))
+        let favouriteCoins = (snapshot.data() as any)["coins"] as Array<string>
+        let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
+        if (coins.data.state == "success") {
+            let data = coins.data.data as Array<any>
+            data = data.filter(value => favouriteCoins.includes(value.name.toLowerCase()))
+            res.json({ state: "success", data })
+        } else {
+            throw new Error()
+        }
+    } catch (error) {
+        res.json({ state: "failed", reason: "backend error" })
+    }
+    
+})
 
 adminApi.get("/message", async (_, res) => {
     const snapshot = await getDoc(doc(table.admin, "message"))
