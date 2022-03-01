@@ -124,6 +124,35 @@ userApi.post("/:id/portfolio/buy", async (req, res) => {
     }
 })
 
+userApi.get("/:id/portfolio/search", async (req, res) => {
+    let id = req.params.id
+    let url = `${req.protocol}://${req.headers.host}`
+    try {
+        let snapshot = await getDoc(doc(table.user, id))
+        if (snapshot.exists()) {
+            let assets = (snapshot.data() as any)["assets"] as {[name:string]: number}
+            let assetsCoins = Object.keys(assets)
+            let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
+            if (coins.data.state == "success") {
+                let data = coins.data.data as Array<any>
+                data = data
+                        .map(value => (
+                            {
+                                ...value, 
+                                amount: assets[value.name.toLowerCase()] != undefined ? assets[value.name.toLowerCase()] : 0, 
+                            }
+                        )
+                    )
+                res.json({ state: "success", data })
+            } 
+        } else {
+            res.json({ state: "failed", reason: "user doesn't exist" })
+        }
+    } catch (error) {
+        res.json({ state: "failed", reason: "backend error" })
+    }
+})
+
 userApi.get("/:id/portfolio", async (req, res) => {
     let id = req.params.id
     let url = `${req.protocol}://${req.headers.host}`
