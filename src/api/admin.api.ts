@@ -12,10 +12,36 @@ import { table } from "../services/database"
 
 const adminApi = Router()
 
+adminApi.get("/favourite-coin-data", async (req, res) => {
+    let url = `${req.protocol}://${req.headers.host}`
+    try {
+        let snapshot = await getDoc(doc(table.admin, "favourite-coin"))
+        let favouriteCoins = (snapshot.data() as any)["coins"] as Array<string>
+        let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
+        let favouriteCoinList = await axios.get(`${url}/${process.env.API_SECRET_KEY}/admin/favourite-coin`)
+        if (coins.data.state == "success" && favouriteCoinList.data.state == "success") {
+            let data = coins.data.data as Array<any>
+            data = data.filter(value => favouriteCoins.includes(value.name.toLowerCase()))
+            res.json({ 
+                state: "success", data: {
+                    "favourite coins": favouriteCoins.map(value => value.toLowerCase()),
+                    "favourite coin list": favouriteCoinList.data.data.map((value: any) => ({...value, is_add_to_favourite: favouriteCoins.includes(value.name.toLowerCase())})),
+                    "coin list": coins.data.data
+                }
+            })                
+        } else {
+            throw new Error()
+        }
+    } catch (error) {
+        res.json({ state: "failed", reason: "backend error" })
+    }
+    
+})
+
 adminApi.post("/favourite-coin", async (req, res) => {
-    const data = req.body
-    setDoc(doc(table.admin, "favourite-coin"), {coins: data})
-    .then(_ => res.json({ state: "success" }))
+    const data = req.body as Array<string>
+    setDoc(doc(table.admin, "favourite-coin"), {coins: data.map(value => value.toLowerCase())})
+    .then(_ => res.json({ state: "success", data }))
     .catch(_ => res.json({ state: "failed", reason: "backend error" }))
 })
 
