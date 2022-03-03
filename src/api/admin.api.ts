@@ -25,8 +25,8 @@ adminApi.get("/favourite-coin-data", async (req, res) => {
             res.json({ 
                 state: "success", data: {
                     "favourite coins": favouriteCoins.map(value => value.toLowerCase()),
-                    "favourite coin list": favouriteCoinList.data.data.map((value: any) => ({...value, is_add_to_favourite: favouriteCoins.includes(value.name.toLowerCase())})),
-                    "coin list": coins.data.data
+                    "favourite coin list": favouriteCoinList.data.data,
+                    "coin list": coins.data.data.map((value: any) => ({...value, is_add_to_favourite: favouriteCoins.includes(value.name.toLowerCase())})),
                 }
             })                
         } else {
