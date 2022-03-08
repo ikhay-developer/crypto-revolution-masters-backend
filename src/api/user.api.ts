@@ -99,7 +99,7 @@ userApi.post("/:id/portfolio/buy", async (req, res) => {
         let userData = snapshot.data() as any
         userData["transaction"] = [
             {
-                name: name, 
+                name, 
                 amount,
                 time,
                 action: "buy",
@@ -131,7 +131,6 @@ userApi.get("/:id/portfolio/search", async (req, res) => {
         let snapshot = await getDoc(doc(table.user, id))
         if (snapshot.exists()) {
             let assets = (snapshot.data() as any)["assets"] as {[name:string]: number}
-            let assetsCoins = Object.keys(assets)
             let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
             if (coins.data.state == "success") {
                 let data = coins.data.data as Array<any>
@@ -159,22 +158,24 @@ userApi.get("/:id/portfolio", async (req, res) => {
     try {
         let snapshot = await getDoc(doc(table.user, id))
         if (snapshot.exists()) {
-            let assets = (snapshot.data() as any)["assets"] as {[name:string]: number}
-            let assetsCoins = Object.keys(assets)
+            let assetsData = (snapshot.data() as any)["assets"] as {[name:string]: number}
+            let assetsCoins = Object.keys(assetsData)
             let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
             if (coins.data.state == "success") {
-                let data = coins.data.data as Array<any>
-                data = data
+                let assets = coins.data.data as Array<any>
+                let balance = 0
+                assets = assets
                     .filter(({ name }) => assetsCoins.includes(name.toLowerCase()))
-                    .map(value => (
-                            {
+                    .map(value => {
+                            balance += assetsData[value.name.toLowerCase()] * value.current_price
+                            return {
                                 ...value, 
-                                amount: assets[value.name.toLowerCase()], 
-                                amount_in_current_price: assets[value.name.toLowerCase()] * value.current_price
+                                amount: assetsData[value.name.toLowerCase()], 
+                                amount_in_current_price: assetsData[value.name.toLowerCase()] * value.current_price
                             }
-                        )
+                        }
                     )
-                res.json({ state: "success", data })
+                res.json({ state: "success", data: { assets, balance } })
             } else {
                 throw new Error()
             }
@@ -240,6 +241,7 @@ userApi.post("/:id/favourite-coins", async (req, res) => {
     if (snapshot.exists()) {
         let userData = snapshot.data() as any
         favouriteCoins = [...favouriteCoins, ...userData["favourite coins"]]
+        favouriteCoins = favouriteCoins.map(value => value.toLowerCase())
         userData["favourite coins"] = favouriteCoins.filter((coin, index) => favouriteCoins.indexOf(coin) == index)
         setDoc(docRef, userData)
         .then(_ => {
