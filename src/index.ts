@@ -7,6 +7,7 @@ import coinsApi from "./api/coins.api"
 import adminApi from "./api/admin.api"
 import uploadApi from "./api/upload.api"
 import storageApi from "./api/storage.api"
+import { join } from "path"
 
 const app = express()
 
@@ -27,5 +28,11 @@ app.use(`/${process.env.API_SECRET_KEY}/admin`, adminApi)
 app.use(`/${process.env.API_SECRET_KEY}/upload`, uploadApi)
 
 app.use(`/${process.env.API_SECRET_KEY}/storage`, storageApi)
+
+app.use(express.static("public"))
+
+app.get("/dashboard", (_, res) => {
+    res.sendFile(join(__dirname, "dashboard/index.html"))
+})
 
 app.listen(PORT, () => console.log(`Starting server at http://localhost:${PORT}`))
