@@ -175,7 +175,7 @@ userApi.get("/:id/portfolio", async (req, res) => {
                             }
                         }
                     )
-                    .filter(value => value.amount > 0.0000000000000000)
+                    .filter(value => Math.ceil(value.amount) > 0)
                 res.json({ state: "success", data: { assets, balance } })
             } else {
                 throw new Error()
