@@ -166,6 +166,7 @@ userApi.get("/:id/portfolio", async (req, res) => {
                 let balance = 0
                 assets = assets
                     .filter(({ name }) => assetsCoins.includes(name.toLowerCase()))
+                    .filter(value => Math.round(assetsData[value.name.toLowerCase()]) > 0)
                     .map(value => {
                             balance += assetsData[value.name.toLowerCase()] * value.current_price
                             return {
@@ -175,7 +176,6 @@ userApi.get("/:id/portfolio", async (req, res) => {
                             }
                         }
                     )
-                    .filter(value => Math.ceil(value.amount) > 0)
                 res.json({ state: "success", data: { assets, balance } })
             } else {
                 throw new Error()
