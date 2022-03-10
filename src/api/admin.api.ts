@@ -99,7 +99,7 @@ adminApi.post("/ads/:id", async (req, res) => {
         let data = Object(snapshot.data())
         data[req.params.id] = {...body}
         setDoc(doc(table.admin, "ads"), data)
-        .then(_ => res.json({ state: "success", data: {...body} }))
+        .then(_ => res.json({ state: "success", data: {...body, index: req.params.id} }))
         .catch(_ => res.json({ state: "failed", reason: "backend error" }))
     } else {
         res.json({ state: "failed", reason: "backend error" })
