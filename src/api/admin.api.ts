@@ -9,6 +9,7 @@ import {
     setDoc 
 } from "firebase/firestore"
 import { table } from "../services/database"
+import uniqid from 'uniqid'
 
 const adminApi = Router()
 
@@ -81,9 +82,8 @@ adminApi.post("/message", async (req, res) => {
     const body = req.body
     if (snapshot.exists()) {
         let data = Object(snapshot.data())
-        let dataArray = Array.from(Object.values(data))
         body["date"] = new Date().toISOString()
-        data[dataArray.length + 1] = body
+        data[uniqid("msg-")] = body
         setDoc(doc(table.admin, "message"), data)
         .then(_ => res.json({ state: "success", data: {...body} }))
         .catch(_ => res.json({ state: "failed", reason: "backend error" }))
