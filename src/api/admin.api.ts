@@ -82,7 +82,6 @@ adminApi.post("/message", async (req, res) => {
     const body = req.body
     if (snapshot.exists()) {
         let data = Object(snapshot.data())
-        body["date"] = new Date().toISOString()
         data[uniqid("msg-")] = body
         setDoc(doc(table.admin, "message"), data)
         .then(_ => res.json({ state: "success", data: {...body} }))
