@@ -10,6 +10,9 @@ import {
 } from "firebase/firestore"
 import { table } from "../services/database"
 import uniqid from 'uniqid'
+import { Temporal, toTemporalInstant } from '@js-temporal/polyfill'
+
+(Date.prototype as any).toTemporalInstant = toTemporalInstant
 
 const adminApi = Router()
 
@@ -70,7 +73,20 @@ adminApi.get("/message", async (_, res) => {
     if (snapshot.exists()) {
         let data = Object(snapshot.data())
         let dataArray = Array.from(Object.values(data))
-        dataArray.reverse()
+            .map((value:any) => {
+                if ((value.date as string).search(/\[/) < 0) {
+                    value.date = (new Date(value.date) as any).toTemporalInstant()
+                } else {
+                    value.date = Temporal.Instant.from(value.date)
+                }
+                return { ...value }
+            })
+            .sort((a: any, b: any) => Temporal.Instant.compare(a.date, b.date))
+            .map((value:any) => {
+                value.date = new Date(value.date.epochMilliseconds).toISOString()
+                return { ...value }
+            })
+            .reverse()
         res.json({ state: "success", data: dataArray })
     } else {
         res.json({ state: "failed", reason: "backend error" })
