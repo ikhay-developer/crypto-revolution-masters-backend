@@ -2,6 +2,7 @@ import "dotenv/config"
 import { Router } from "express"
 import multer from "multer"
 import { createClient } from "@supabase/supabase-js"
+import { Temporal } from "@js-temporal/polyfill"
 
 const {
     SUPABASE_URL,
@@ -16,8 +17,8 @@ const uploadMiddleware = multer()
 
 uploadApi.post("/:where/", uploadMiddleware.any(), async (req, res) => {
     let files = req.files as Array<any>
-    let timeStamp = new Date().toISOString()
-    let fileName = `${files.at(0)["originalname"]}_${timeStamp}`
+    let timeStamp = Temporal.Now.instant().epochMilliseconds.toString()
+    let fileName = `${timeStamp}-${files.at(0)["originalname"]}`
     let buffer = files.at(0)["buffer"]
     if (files != null) {
         if (req.params.where == "message-images") {
