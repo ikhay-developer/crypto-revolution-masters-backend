@@ -405,20 +405,12 @@ userApi.delete('/:id', async (req, res) => {
             .delete()
             .match({ id: userId })
         if (!error) {
-<<<<<<< HEAD
-=======
-            res.json({ state: "success" })
->>>>>>> ffcdf0f36f059ca871af9f1961cf2cb18c1f0380
             const { error: authError } = await supabase.auth.api.deleteUser(userId)
             if (!authError) {
                 res.json({ state: "success" })
             } else {
                 res.json({ state: "failed", reason: "backend error" })
             }
-<<<<<<< HEAD
-=======
-            
->>>>>>> ffcdf0f36f059ca871af9f1961cf2cb18c1f0380
         } else {
             res.json({ state: "failed", reason: "backend error" })
         }
@@ -460,10 +452,7 @@ userApi.post("/login", async (req, res) => {
 
 userApi.post("/signin", async (req, res) => {
     const { email, username, password } = req.body as UserDetail
-<<<<<<< HEAD
     const appId = req.body["app-id"]
-=======
->>>>>>> ffcdf0f36f059ca871af9f1961cf2cb18c1f0380
     const emailChecker =  await supabase
         .from("users")
         .select("id")
@@ -485,12 +474,8 @@ userApi.post("/signin", async (req, res) => {
             const { error, user } = await supabase.auth.api.createUser({
                 user_metadata: {
                     password,
-<<<<<<< HEAD
                     username,
                     "app-id": appId
-=======
-                    username
->>>>>>> ffcdf0f36f059ca871af9f1961cf2cb18c1f0380
                 },
                 email,
                 password,
