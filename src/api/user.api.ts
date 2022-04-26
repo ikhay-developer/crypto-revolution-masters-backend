@@ -452,7 +452,7 @@ userApi.post("/login", async (req, res) => {
 
 userApi.post("/signin", async (req, res) => {
     const { email, username, password } = req.body as UserDetail
-    const appId = req.body["app-id"]
+    const appId = req.body["app-id"] ? req.body["app-id"] : null
     const emailChecker =  await supabase
         .from("users")
         .select("id")
