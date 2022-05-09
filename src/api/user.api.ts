@@ -18,6 +18,73 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 const userApi:Router = Router()
 
+userApi.get("/:id/data", async (req, res) => {
+    let id = req.params.id
+    let url = `${req.protocol}://${req.headers.host}`
+    const userData =  await supabase
+        .from("users")
+        .select("favourite-coins, assets")
+        .or(`${ /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi.test(id) ? `id.eq.${id},` : ""}app-id.eq.${id}`)
+        .limit(1)
+        .single()
+    if (userData.data) {
+        let assets = userData.data.assets
+        let assetsCoins = Object.keys(assets)
+        let favouriteCoins:Array<string> = userData.data["favourite-coins"]
+        try {
+            let coins = await axios.get(`${url}/${process.env.API_SECRET_KEY}/coins`)
+            if (coins.data.state == "success") {
+                let data = coins.data.data as Array<any>
+                let userCoinsData = data.map(value => {
+                    if (favouriteCoins.includes(value.name.toLowerCase())) {
+                        return ({...value, "add_to_watch_list": true})
+                    } else {
+                        return ({...value, "add_to_watch_list": false})
+                    }
+                })
+                let userPortfolioSearch = data.map(value => (
+                    {
+                        ...value, 
+                        amount: assets[value.name.toLowerCase()] != undefined ? assets[value.name.toLowerCase()] : 0, 
+                    }
+                ))
+                let userFavouriteCoins = data.filter(({ name }) => favouriteCoins.includes(name.toLowerCase()))
+                let balance = 0
+                let userPortfolio = data
+                    .filter(({ name }) => assetsCoins.includes(name.toLowerCase()))
+                    .filter(value => Math.round(assets[value.name.toLowerCase()]) > 0)
+                    .map(value => {
+                            balance += assets[value.name.toLowerCase()] * value.current_price
+                            return {
+                                ...value, 
+                                amount: assets[value.name.toLowerCase()], 
+                                amount_in_current_price: assets[value.name.toLowerCase()] * value.current_price
+                            }
+                        }
+                    )
+                res.json({ 
+                    state: "success", 
+                    data: { 
+                        "favourite coins": userFavouriteCoins,
+                        coins: userCoinsData,
+                        "portfolio search": userPortfolioSearch,
+                        portfolio: {
+                            balance,
+                            assets: userPortfolio
+                        }
+                    } 
+                })
+            } else {
+                throw new Error()
+            }
+        } catch (error) {
+            res.json({ state: "failed", reason: "backend error" })
+        }
+    } else {
+        res.json({ state: "failed", reason: "user doesn't exist" })
+    }
+})
+
 userApi.get("/:id/coins", async (req, res) => {
     let id = req.params.id
     let url = `${req.protocol}://${req.headers.host}`
