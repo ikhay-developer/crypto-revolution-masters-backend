@@ -8,6 +8,7 @@ import adminApi from "./api/admin.api"
 import uploadApi from "./api/upload.api"
 import storageApi from "./api/storage.api"
 import { join } from "path"
+import authApi from "./api/auth.api"
 
 const app = express()
 
@@ -28,6 +29,8 @@ app.use(`/${process.env.API_SECRET_KEY}/admin`, adminApi)
 app.use(`/${process.env.API_SECRET_KEY}/upload`, uploadApi)
 
 app.use(`/${process.env.API_SECRET_KEY}/storage`, storageApi)
+
+app.use(`/${process.env.API_SECRET_KEY}/auth`, authApi)
 
 app.use(express.static("public"))
 
