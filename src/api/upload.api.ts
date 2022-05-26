@@ -17,10 +17,10 @@ const uploadMiddleware = multer()
 
 uploadApi.post("/:where/", uploadMiddleware.any(), async (req, res) => {
     let files = req.files as Array<any>
-    let timeStamp = Temporal.Now.instant().epochMilliseconds.toString()
-    let fileName = `${timeStamp}-${files.at(0)["originalname"]}`
-    let buffer = files.at(0)["buffer"]
     if (files != null) {
+        let timeStamp = Temporal.Now.instant().epochMilliseconds.toString()
+        let fileName = `${timeStamp}-${files.at(0)["originalname"]}`
+        let buffer = files.at(0)["buffer"]
         if (req.params.where == "message-images") {
             const { error } = await supabase
                 .storage
