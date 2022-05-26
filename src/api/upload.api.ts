@@ -17,11 +17,8 @@ const uploadMiddleware = multer()
 
 uploadApi.post("/:where/", uploadMiddleware.any(), async (req, res) => {
     let files = req.files as Array<any>
-    console.log(files)
     if (files != null) {
-        console.log(files)
-        let file = files.at(0)
-        console.log(file)
+        let file = files[0]
         let timeStamp = Temporal.Now.instant().epochMilliseconds.toString()
         let fileName = `${timeStamp}-${file["originalname"]}`
         let buffer = file["buffer"]
